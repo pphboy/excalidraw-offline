@@ -13,6 +13,7 @@ interface Tab {
   filePath: string;
   fileName: string;
   initialData: any;
+  isRecents?: boolean;
 }
 
 interface RecentFile {
@@ -27,8 +28,25 @@ interface SaveInfo {
   lastSavedBy: "auto" | "manual";
 }
 
+const UIOptions = {
+  dockedSidebarBreakpoint: 200,
+  canvasActions: {
+    loadScene: false,
+    saveToActiveFile: false,
+    export: false,
+    changeViewBackgroundColor: true,
+    clearCanvas: true,
+    toggleTheme: null,
+    saveAsImage: true,
+  },
+  tools: {
+    image: true,
+  },
+};
+
 const RECENTS_KEY = "excalidraw-recents";
 const SAVE_INFO_KEY = "excalidraw-save-info";
+const RECENTS_TAB_ID = "recents";
 
 function getRecents(): RecentFile[] {
   try {
@@ -111,6 +129,8 @@ function ExcalidrawCanvas({
       }}
     >
       <Excalidraw
+        //@ts-ignore
+        UIOptions={UIOptions}
         onChange={handleChange}
         excalidrawAPI={handleExcalidrawAPI}
         initialData={tab.initialData}
@@ -120,10 +140,17 @@ function ExcalidrawCanvas({
 }
 
 export function ExcalidrawMain() {
-  const [tabs, setTabs] = useState<Tab[]>([]);
-  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [tabs, setTabs] = useState<Tab[]>([
+    {
+      id: RECENTS_TAB_ID,
+      filePath: "",
+      fileName: "Recents",
+      initialData: null,
+      isRecents: true,
+    },
+  ]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(RECENTS_TAB_ID);
   const [autoSave, setAutoSave] = useState(true);
-  const [showRecents, setShowRecents] = useState(true);
   const [saveInfo, setSaveInfoState] = useState<SaveInfo | null>(getSaveInfo());
   const [, setUpdateCount] = useState(0);
 
@@ -236,7 +263,6 @@ export function ExcalidrawMain() {
         setTabs((prev) => [...prev, newTab]);
         setActiveTabId(id);
         addRecent(filePath, fileName);
-        setShowRecents(false);
       } catch (err) {
         throw new Error(`Failed to open file: ${err}`);
       }
@@ -285,7 +311,6 @@ export function ExcalidrawMain() {
       setTabs((prev) => [...prev, newTab]);
       setActiveTabId(id);
       addRecent(finalPath, fileName);
-      setShowRecents(false);
     } catch (err) {
       throw new Error(`Failed to create file: ${err}`);
     }
@@ -298,6 +323,8 @@ export function ExcalidrawMain() {
   }, []);
 
   const handleCloseTab = async (id: string) => {
+    if (id === RECENTS_TAB_ID) return;
+
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
@@ -369,10 +396,11 @@ export function ExcalidrawMain() {
         }}
       >
         <button onClick={handleOpenFile}>Open File</button>
-        <button onClick={handleCreateFile}>Create File</button>
+        <button onClick={handleCreateFile}>NewFile</button>
         <button onClick={handleSave} disabled={!activeTabId}>
           Save (ctrl+s)
         </button>
+        <button onClick={() => setActiveTabId(RECENTS_TAB_ID)}>Recents</button>
         <label style={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <input
             type="checkbox"
@@ -427,28 +455,30 @@ export function ExcalidrawMain() {
               >
                 {tab.fileName}
               </span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCloseTab(tab.id);
-                }}
-                style={{
-                  marginLeft: "8px",
-                  background: "none",
-                  border: "none",
-                  color: "#888",
-                  cursor: "pointer",
-                  padding: "0 4px",
-                }}
-              >
-                ×
-              </button>
+              {!tab.isRecents && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCloseTab(tab.id);
+                  }}
+                  style={{
+                    marginLeft: "8px",
+                    background: "none",
+                    border: "none",
+                    color: "#888",
+                    cursor: "pointer",
+                    padding: "0 4px",
+                  }}
+                >
+                  ×
+                </button>
+              )}
             </div>
           ))}
         </div>
       )}
 
-      {showRecents || tabs.length === 0 ? (
+      {activeTabId === RECENTS_TAB_ID ? (
         <div
           style={{
             flex: 1,
@@ -510,15 +540,17 @@ export function ExcalidrawMain() {
         </div>
       ) : null}
 
-      {tabs.map((tab) => (
-        <ExcalidrawCanvas
-          key={tab.id}
-          tab={tab}
-          isActive={activeTabId === tab.id}
-          onContentChange={handleContentChange}
-          onAPIReady={handleAPIReady}
-        />
-      ))}
+      {tabs.map((tab) =>
+        tab.isRecents ? null : (
+          <ExcalidrawCanvas
+            key={tab.id}
+            tab={tab}
+            isActive={activeTabId === tab.id}
+            onContentChange={handleContentChange}
+            onAPIReady={handleAPIReady}
+          />
+        ),
+      )}
     </div>
   );
 }
