@@ -2,6 +2,9 @@
 
 A desktop application for editing Excalidraw diagrams offline, built with Wails (Go + React + TypeScript).
 
+<img width="600"  alt="image" src="https://github.com/user-attachments/assets/9baa9786-e129-4731-acc1-6bde4977a32d" />
+
+
 ## Features
 
 - **Open Files**: Open existing `.excalidraw` files with JSON format validation
