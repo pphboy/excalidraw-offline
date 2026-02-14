@@ -87,16 +87,6 @@ function ExcalidrawTab({
     }
   }, [excalidrawAPI, tab.id, onAPIReady]);
 
-  useEffect(() => {
-    if (excalidrawAPI && isActive && tab.initialData) {
-      try {
-        excalidrawAPI.updateScene(tab.initialData);
-      } catch (e) {
-        console.error("Failed to load scene:", e);
-      }
-    }
-  }, [excalidrawAPI, isActive, tab.initialData]);
-
   if (!isActive) return null;
 
   return (
@@ -164,9 +154,18 @@ export function ExcalidrawMain() {
   const handleAPIReady = useCallback(
     (id: string, api: any) => {
       if (id === activeTabId) {
-        setTabs((prev) =>
-          prev.map((t) => (t.id === id ? { ...t, excalidrawAPI: api } : t)),
-        );
+        setTabs((prev) => {
+          const updated = prev.map((t) => (t.id === id ? { ...t, excalidrawAPI: api } : t));
+          const tab = updated.find((t) => t.id === id);
+          if (tab?.initialData) {
+            try {
+              api.updateScene(tab.initialData);
+            } catch (e) {
+              console.error("Failed to load scene:", e);
+            }
+          }
+          return updated;
+        });
       }
     },
     [activeTabId],
