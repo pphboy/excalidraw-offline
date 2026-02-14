@@ -230,6 +230,22 @@ export function ExcalidrawMain() {
       setActiveTabId(id);
       addRecent(filePath, fileName);
       setShowRecents(false);
+
+      const loadScene = () => {
+        setTabs((currentTabs) => {
+          const tab = currentTabs.find((t) => t.id === id);
+          if (tab?.excalidrawAPI && initialData) {
+            try {
+              tab.excalidrawAPI.updateScene(initialData);
+            } catch (e) {
+              console.error("Failed to load scene:", e);
+            }
+          }
+          return currentTabs;
+        });
+      };
+
+      setTimeout(loadScene, 500);
     } catch (err) {
       console.error("Failed to open file:", err);
     }
