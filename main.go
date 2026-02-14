@@ -20,6 +20,9 @@ func main() {
 		Title:  "excalidraw-offline",
 		Width:  1024,
 		Height: 768,
+		Debug: options.Debug{
+			OpenInspectorOnStartup: true,
+		},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
