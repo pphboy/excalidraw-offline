@@ -68,22 +68,18 @@ function ExcalidrawTab({
   autoSave,
   onAPIReady,
   onSaveTriggered,
+  setSaveInfo,
 }: {
   tab: Tab;
   isActive: boolean;
   autoSave: boolean;
   onAPIReady: (id: string, api: any) => void;
   onSaveTriggered: (tabId: string) => void;
+  setSaveInfo: (info: SaveInfo) => void;
 }) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
-  const apiRef = useRef<any>(null);
-  const filePathRef = useRef(tab.filePath);
-  const tabIdRef = useRef(tab.id);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedRef = useRef(false);
-
-  filePathRef.current = tab.filePath;
-  tabIdRef.current = tab.id;
 
   useEffect(() => {
     if (excalidrawAPI && !loadedRef.current) {
@@ -100,57 +96,62 @@ function ExcalidrawTab({
 
   useEffect(() => {
     if (excalidrawAPI) {
-      apiRef.current = excalidrawAPI;
       onAPIReady(tab.id, excalidrawAPI);
     }
   }, [excalidrawAPI, tab.id, onAPIReady]);
 
   useEffect(() => {
-    const api = apiRef.current;
-    if (!api) return;
+    if (!excalidrawAPI) return;
 
     const handleChange = () => {
+      if (!autoSave) return;
+      
       if (autoSaveTimer.current) {
         clearTimeout(autoSaveTimer.current);
       }
       autoSaveTimer.current = setTimeout(async () => {
-        const currentApi = apiRef.current;
-        const currentPath = filePathRef.current;
-        if (currentApi && currentPath) {
+        try {
           const json = serializeAsJSON(
-            currentApi.getSceneElements(),
-            currentApi.getAppState(),
-            currentApi.getFiles(),
+            excalidrawAPI.getSceneElements(),
+            excalidrawAPI.getAppState(),
+            excalidrawAPI.getFiles(),
             "local"
           );
-          await SaveFile(currentPath, json);
-          saveSaveInfo({ lastSaved: Date.now(), lastSavedBy: "auto" });
+          await SaveFile(tab.filePath, json);
+          const info: SaveInfo = { lastSaved: Date.now(), lastSavedBy: "auto" };
+          saveSaveInfo(info);
+          setSaveInfo(info);
+        } catch (err) {
+          console.error("AutoSave failed:", err);
         }
       }, 2000);
     };
 
-    api.onChange = handleChange;
+    excalidrawAPI.onChange = handleChange;
 
     return () => {
       if (autoSaveTimer.current) {
         clearTimeout(autoSaveTimer.current);
       }
     };
-  }, [isActive, autoSave]);
+  }, [excalidrawAPI, autoSave, tab.filePath, setSaveInfo]);
 
   useEffect(() => {
     const handleManualSave = async () => {
-      const currentApi = apiRef.current;
-      const currentPath = filePathRef.current;
-      if (currentApi && currentPath) {
+      if (!excalidrawAPI) return;
+      try {
         const json = serializeAsJSON(
-          currentApi.getSceneElements(),
-          currentApi.getAppState(),
-          currentApi.getFiles(),
+          excalidrawAPI.getSceneElements(),
+          excalidrawAPI.getAppState(),
+          excalidrawAPI.getFiles(),
           "local"
         );
-        await SaveFile(currentPath, json);
-        saveSaveInfo({ lastSaved: Date.now(), lastSavedBy: "manual" });
+        await SaveFile(tab.filePath, json);
+        const info: SaveInfo = { lastSaved: Date.now(), lastSavedBy: "manual" };
+        saveSaveInfo(info);
+        setSaveInfo(info);
+      } catch (err) {
+        console.error("Manual save failed:", err);
       }
     };
 
@@ -158,7 +159,7 @@ function ExcalidrawTab({
     return () => {
       window.removeEventListener(`save-tab-${tab.id}`, handleManualSave);
     };
-  }, [tab.id]);
+  }, [tab.id, tab.filePath, excalidrawAPI, setSaveInfo]);
 
   if (!isActive) return null;
 
@@ -178,8 +179,12 @@ export function ExcalidrawMain() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [autoSave, setAutoSave] = useState(true);
   const [showRecents, setShowRecents] = useState(true);
-  const [saveInfo, setSaveInfo] = useState<SaveInfo | null>(getSaveInfo());
+  const [saveInfo, setSaveInfoState] = useState<SaveInfo | null>(getSaveInfo());
   const [, setUpdateCount] = useState(0);
+
+  const setSaveInfo = useCallback((info: SaveInfo) => {
+    setSaveInfoState(info);
+  }, []);
 
   const handleAPIReady = useCallback((id: string, api: any) => {
     setTabs((prev) =>
@@ -272,7 +277,9 @@ export function ExcalidrawMain() {
         "local"
       );
       await SaveFile(tab.filePath, json);
-      saveSaveInfo({ lastSaved: Date.now(), lastSavedBy: "auto" });
+      const info: SaveInfo = { lastSaved: Date.now(), lastSavedBy: "auto" };
+      saveSaveInfo(info);
+      setSaveInfoState(info);
     }
 
     const newTabs = tabs.filter((t) => t.id !== id);
@@ -286,16 +293,20 @@ export function ExcalidrawMain() {
   const handleSave = useCallback(async () => {
     const tab = tabs.find((t) => t.id === activeTabId);
     if (tab?.excalidrawAPI && tab.filePath) {
-      const json = serializeAsJSON(
-        tab.excalidrawAPI.getSceneElements(),
-        tab.excalidrawAPI.getAppState(),
-        tab.excalidrawAPI.getFiles(),
-        "local"
-      );
-      await SaveFile(tab.filePath, json);
-      const newInfo: SaveInfo = { lastSaved: Date.now(), lastSavedBy: "manual" };
-      saveSaveInfo(newInfo);
-      setSaveInfo(newInfo);
+      try {
+        const json = serializeAsJSON(
+          tab.excalidrawAPI.getSceneElements(),
+          tab.excalidrawAPI.getAppState(),
+          tab.excalidrawAPI.getFiles(),
+          "local"
+        );
+        await SaveFile(tab.filePath, json);
+        const newInfo: SaveInfo = { lastSaved: Date.now(), lastSavedBy: "manual" };
+        saveSaveInfo(newInfo);
+        setSaveInfoState(newInfo);
+      } catch (err) {
+        console.error("Save failed:", err);
+      }
     }
   }, [activeTabId, tabs]);
 
@@ -312,7 +323,7 @@ export function ExcalidrawMain() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setSaveInfo(getSaveInfo());
+      setSaveInfoState(getSaveInfo());
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -381,12 +392,12 @@ export function ExcalidrawMain() {
             onChange={(e) => setAutoSave(e.target.checked)}
           />
           AutoSave
+          {saveInfo && (
+            <span style={{ fontSize: "12px", color: "#888", marginLeft: "8px" }}>
+              ({saveInfo.lastSavedBy === "auto" ? "Auto" : "Saved"} {formatTime(saveInfo.lastSaved)})
+            </span>
+          )}
         </label>
-        {saveInfo && (
-          <span style={{ fontSize: "12px", color: "#888", marginLeft: "8px" }}>
-            {saveInfo.lastSavedBy === "auto" ? "Auto" : "Saved"}: {formatTime(saveInfo.lastSaved)}
-          </span>
-        )}
       </div>
 
       {tabs.length > 0 && (
@@ -495,6 +506,7 @@ export function ExcalidrawMain() {
           autoSave={autoSave}
           onAPIReady={handleAPIReady}
           onSaveTriggered={triggerSave}
+          setSaveInfo={setSaveInfo}
         />
       ))}
     </div>
