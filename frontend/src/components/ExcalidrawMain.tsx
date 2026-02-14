@@ -80,20 +80,6 @@ function ExcalidrawTab({
   onContentChange: (tabId: string, filePath: string) => void;
 }) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
-  const loadedRef = useRef(false);
-
-  useEffect(() => {
-    if (excalidrawAPI && !loadedRef.current) {
-      loadedRef.current = true;
-      if (tab.initialData) {
-        try {
-          excalidrawAPI.updateScene(tab.initialData);
-        } catch (e) {
-          console.error("Failed to load scene:", e);
-        }
-      }
-    }
-  }, [excalidrawAPI, tab.initialData]);
 
   useEffect(() => {
     if (excalidrawAPI) {
@@ -110,6 +96,16 @@ function ExcalidrawTab({
 
     excalidrawAPI.onChange = handleChange;
   }, [excalidrawAPI, tab.id, tab.filePath, onContentChange]);
+
+  useEffect(() => {
+    if (excalidrawAPI && isActive && tab.initialData) {
+      try {
+        excalidrawAPI.updateScene(tab.initialData);
+      } catch (e) {
+        console.error("Failed to load scene:", e);
+      }
+    }
+  }, [excalidrawAPI, isActive, tab.initialData]);
 
   if (!isActive) return null;
 
@@ -173,10 +169,12 @@ export function ExcalidrawMain() {
   );
 
   const handleAPIReady = useCallback((id: string, api: any) => {
-    setTabs((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, excalidrawAPI: api } : t)),
-    );
-  }, []);
+    if (id === activeTabId) {
+      setTabs((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, excalidrawAPI: api } : t)),
+      );
+    }
+  }, [activeTabId]);
 
   const handleContentChange = useCallback(
     (tabId: string, filePath: string) => {
@@ -230,22 +228,6 @@ export function ExcalidrawMain() {
       setActiveTabId(id);
       addRecent(filePath, fileName);
       setShowRecents(false);
-
-      const loadScene = () => {
-        setTabs((currentTabs) => {
-          const tab = currentTabs.find((t) => t.id === id);
-          if (tab?.excalidrawAPI && initialData) {
-            try {
-              tab.excalidrawAPI.updateScene(initialData);
-            } catch (e) {
-              console.error("Failed to load scene:", e);
-            }
-          }
-          return currentTabs;
-        });
-      };
-
-      setTimeout(loadScene, 500);
     } catch (err) {
       console.error("Failed to open file:", err);
     }
@@ -514,15 +496,15 @@ export function ExcalidrawMain() {
         </div>
       ) : null}
 
-      {tabs.map((tab) => (
+      {activeTabId && (
         <ExcalidrawTab
-          key={tab.id}
-          tab={tab}
-          isActive={activeTabId === tab.id}
+          key={activeTabId}
+          tab={tabs.find((t) => t.id === activeTabId)!}
+          isActive={true}
           onAPIReady={handleAPIReady}
           onContentChange={handleContentChange}
         />
-      ))}
+      )}
     </div>
   );
 }
