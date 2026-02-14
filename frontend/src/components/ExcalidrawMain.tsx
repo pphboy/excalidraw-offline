@@ -143,31 +143,34 @@ export function ExcalidrawMain() {
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const doSave = useCallback(async (tabId: string, isManual: boolean = false) => {
-    const tab = tabsRef.current.find((t) => t.id === tabId);
-    if (!tab?.excalidrawAPI || !tab.filePath) {
-      return;
-    }
+  const doSave = useCallback(
+    async (tabId: string, isManual: boolean = false) => {
+      const tab = tabsRef.current.find((t) => t.id === tabId);
+      if (!tab?.excalidrawAPI || !tab.filePath) {
+        return;
+      }
 
-    try {
-      const json = serializeAsJSON(
-        tab.excalidrawAPI.getSceneElements(),
-        tab.excalidrawAPI.getAppState(),
-        tab.excalidrawAPI.getFiles(),
-        "local",
-      );
-      await SaveFile(tab.filePath, json);
-      const info: SaveInfo = {
-        filePath: tab.filePath,
-        lastSaved: Date.now(),
-        lastSavedBy: isManual ? "manual" : "auto",
-      };
-      saveSaveInfo(info);
-      setSaveInfoState(info);
-    } catch (err) {
-      console.error("Save failed:", err);
-    }
-  }, []);
+      try {
+        const json = serializeAsJSON(
+          tab.excalidrawAPI.getSceneElements(),
+          tab.excalidrawAPI.getAppState(),
+          tab.excalidrawAPI.getFiles(),
+          "local",
+        );
+        await SaveFile(tab.filePath, json);
+        const info: SaveInfo = {
+          filePath: tab.filePath,
+          lastSaved: Date.now(),
+          lastSavedBy: isManual ? "manual" : "auto",
+        };
+        saveSaveInfo(info);
+        setSaveInfoState(info);
+      } catch (err) {
+        console.error("Save failed:", err);
+      }
+    },
+    [],
+  );
 
   const handleAPIReady = useCallback((id: string, api: any) => {
     setTabs((prev) =>
@@ -198,11 +201,8 @@ export function ExcalidrawMain() {
     };
   }, []);
 
-  const handleOpenFile = async () => {
+  const openFile = useCallback(async (filePath: string) => {
     try {
-      const filePath = await ShowOpenFileDialog();
-      if (!filePath) return;
-
       const existingTab = tabs.find((t) => t.filePath === filePath);
       if (existingTab) {
         setActiveTabId(existingTab.id);
@@ -232,6 +232,16 @@ export function ExcalidrawMain() {
       setShowRecents(false);
     } catch (err) {
       console.error("Failed to open file:", err);
+    }
+  }, [tabs]);
+
+  const handleOpenFile = async () => {
+    try {
+      const filePath = await ShowOpenFileDialog();
+      if (!filePath) return;
+      await openFile(filePath);
+    } catch (err) {
+      console.error("Failed to open file dialog:", err);
     }
   };
 
@@ -318,37 +328,7 @@ export function ExcalidrawMain() {
   }, []);
 
   const handleRecentClick = async (filePath: string) => {
-    try {
-      const existingTab = tabs.find((t) => t.filePath === filePath);
-      if (existingTab) {
-        setActiveTabId(existingTab.id);
-        return;
-      }
-
-      const content = await OpenFile(filePath);
-      const fileName = filePath.split(/[\\/]/).pop() || "";
-      const id = Date.now().toString();
-
-      let initialData = null;
-      try {
-        initialData = JSON.parse(content);
-      } catch {}
-
-      const newTab: Tab = {
-        id,
-        filePath,
-        fileName,
-        excalidrawAPI: null,
-        initialData,
-      };
-
-      setTabs((prev) => [...prev, newTab]);
-      setActiveTabId(id);
-      addRecent(filePath, fileName);
-      setShowRecents(false);
-    } catch (err) {
-      console.error("Failed to open recent file:", err);
-    }
+    await openFile(filePath);
   };
 
   const handleRemoveRecent = (e: React.MouseEvent, filePath: string) => {
@@ -418,8 +398,7 @@ export function ExcalidrawMain() {
                 display: "flex",
                 alignItems: "center",
                 padding: "8px 12px",
-                backgroundColor:
-                  activeTabId === tab.id ? "#1e1e1e" : "#2d2d2d",
+                backgroundColor: activeTabId === tab.id ? "#1e1e1e" : "#2d2d2d",
                 borderRight: "1px solid #444",
                 cursor: "pointer",
                 minWidth: "120px",
