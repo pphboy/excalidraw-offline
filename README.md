@@ -4,6 +4,8 @@ A desktop application for editing Excalidraw diagrams offline, built with Wails 
 
 <img width="600"  alt="image" src="https://github.com/user-attachments/assets/9baa9786-e129-4731-acc1-6bde4977a32d" />
 
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/0dc27452-8f93-4819-9d0a-79914b5b9607" />
+
 
 ## Features
 
