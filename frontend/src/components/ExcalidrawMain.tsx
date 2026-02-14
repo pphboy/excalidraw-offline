@@ -127,13 +127,24 @@ export function ExcalidrawMain() {
   const [saveInfo, setSaveInfoState] = useState<SaveInfo | null>(getSaveInfo());
   const [, setUpdateCount] = useState(0);
 
+  const activeTabIdRef = useRef<string | null>(null);
+  const tabsRef = useRef<Tab[]>([]);
+
+  useEffect(() => {
+    activeTabIdRef.current = activeTabId;
+  }, [activeTabId]);
+
+  useEffect(() => {
+    tabsRef.current = tabs;
+  }, [tabs]);
+
   const initializingRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const doSave = useCallback(
     async (tabId: string, isManual: boolean = false) => {
       const api = tabAPIs.get(tabId);
-      const tab = tabs.find((t) => t.id === tabId);
+      const tab = tabsRef.current.find((t) => t.id === tabId);
       if (!api || !tab?.filePath) {
         return;
       }
@@ -157,7 +168,7 @@ export function ExcalidrawMain() {
         throw new Error(`Save failed: ${err}`);
       }
     },
-    [tabs],
+    [],
   );
 
   const handleAPIReady = useCallback((id: string) => {
@@ -176,11 +187,9 @@ export function ExcalidrawMain() {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
       }
-      console.log("onSave", new Date());
 
       saveTimerRef.current = setTimeout(() => {
         doSave(tabId, false);
-        console.log("onSave", new Date(), "123");
       }, 800);
     },
     [autoSave, doSave],
@@ -283,9 +292,10 @@ export function ExcalidrawMain() {
   };
 
   const handleSave = useCallback(() => {
-    if (!activeTabId) return;
-    doSave(activeTabId, true);
-  }, [activeTabId, doSave]);
+    const currentActiveTabId = activeTabIdRef.current;
+    if (!currentActiveTabId) return;
+    doSave(currentActiveTabId, true);
+  }, []);
 
   const handleCloseTab = async (id: string) => {
     if (saveTimerRef.current) {
@@ -361,7 +371,7 @@ export function ExcalidrawMain() {
         <button onClick={handleOpenFile}>Open File</button>
         <button onClick={handleCreateFile}>Create File</button>
         <button onClick={handleSave} disabled={!activeTabId}>
-          Save
+          Save (ctrl+s)
         </button>
         <label style={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <input
