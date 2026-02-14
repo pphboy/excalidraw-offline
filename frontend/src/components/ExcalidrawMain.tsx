@@ -88,16 +88,6 @@ function ExcalidrawTab({
   }, [excalidrawAPI, tab.id, onAPIReady]);
 
   useEffect(() => {
-    if (!excalidrawAPI) return;
-
-    const handleChange = () => {
-      onContentChange(tab.id, tab.filePath);
-    };
-
-    excalidrawAPI.onChange = handleChange;
-  }, [excalidrawAPI, tab.id, tab.filePath, onContentChange]);
-
-  useEffect(() => {
     if (excalidrawAPI && isActive && tab.initialData) {
       try {
         excalidrawAPI.updateScene(tab.initialData);
@@ -119,6 +109,9 @@ function ExcalidrawTab({
       }}
     >
       <Excalidraw
+        onChange={() => {
+          onContentChange(tab.id, tab.filePath);
+        }}
         excalidrawAPI={(api) => {
           setExcalidrawAPI(api);
         }}
@@ -168,13 +161,16 @@ export function ExcalidrawMain() {
     [],
   );
 
-  const handleAPIReady = useCallback((id: string, api: any) => {
-    if (id === activeTabId) {
-      setTabs((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, excalidrawAPI: api } : t)),
-      );
-    }
-  }, [activeTabId]);
+  const handleAPIReady = useCallback(
+    (id: string, api: any) => {
+      if (id === activeTabId) {
+        setTabs((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, excalidrawAPI: api } : t)),
+        );
+      }
+    },
+    [activeTabId],
+  );
 
   const handleContentChange = useCallback(
     (tabId: string, filePath: string) => {
@@ -185,6 +181,7 @@ export function ExcalidrawMain() {
       }
 
       saveTimerRef.current = setTimeout(() => {
+        console.log("autosave", new Date(), filePath);
         doSave(tabId, false);
       }, 2000);
     },
@@ -199,39 +196,42 @@ export function ExcalidrawMain() {
     };
   }, []);
 
-  const openFile = useCallback(async (filePath: string) => {
-    try {
-      const existingTab = tabs.find((t) => t.filePath === filePath);
-      if (existingTab) {
-        setActiveTabId(existingTab.id);
-        return;
-      }
-
-      const content = await OpenFile(filePath);
-      const fileName = filePath.split(/[\\/]/).pop() || "";
-      const id = Date.now().toString();
-
-      let initialData = null;
+  const openFile = useCallback(
+    async (filePath: string) => {
       try {
-        initialData = JSON.parse(content);
-      } catch {}
+        const existingTab = tabs.find((t) => t.filePath === filePath);
+        if (existingTab) {
+          setActiveTabId(existingTab.id);
+          return;
+        }
 
-      const newTab: Tab = {
-        id,
-        filePath,
-        fileName,
-        excalidrawAPI: null,
-        initialData,
-      };
+        const content = await OpenFile(filePath);
+        const fileName = filePath.split(/[\\/]/).pop() || "";
+        const id = Date.now().toString();
 
-      setTabs((prev) => [...prev, newTab]);
-      setActiveTabId(id);
-      addRecent(filePath, fileName);
-      setShowRecents(false);
-    } catch (err) {
-      console.error("Failed to open file:", err);
-    }
-  }, [tabs]);
+        let initialData = null;
+        try {
+          initialData = JSON.parse(content);
+        } catch {}
+
+        const newTab: Tab = {
+          id,
+          filePath,
+          fileName,
+          excalidrawAPI: null,
+          initialData,
+        };
+
+        setTabs((prev) => [...prev, newTab]);
+        setActiveTabId(id);
+        addRecent(filePath, fileName);
+        setShowRecents(false);
+      } catch (err) {
+        alert(`Failed to open file: ${err}`);
+      }
+    },
+    [tabs],
+  );
 
   const handleOpenFile = async () => {
     try {
@@ -277,7 +277,7 @@ export function ExcalidrawMain() {
       addRecent(finalPath, fileName);
       setShowRecents(false);
     } catch (err) {
-      console.error("Failed to create file:", err);
+      alert(`Failed to create file: ${err}`);
     }
   };
 
