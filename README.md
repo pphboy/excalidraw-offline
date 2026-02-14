@@ -1,19 +1,56 @@
-# README
+# Excalidraw Offline
 
-## About
+A desktop application for editing Excalidraw diagrams offline, built with Wails (Go + React + TypeScript).
 
-This is the official Wails React-TS template.
+## Features
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+- **Open Files**: Open existing `.excalidraw` files with JSON format validation
+- **Create Files**: Create new Excalidraw diagrams with automatic `.excalidraw` extension
+- **Tab Interface**: Multi-tab support similar to VSCode for working with multiple files
+- **Auto-Save**: Automatically saves changes (enabled by default, 800ms debounce)
+- **Manual Save**: Save with Ctrl+S keyboard shortcut
+- **Recent Files**: Quick access to recently opened files, stored in localStorage
 
-## Live Development
+## Usage
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+### Buttons
 
-## Building
+- **Open File**: Open an existing `.excalidraw` file
+- **NewFile**: Create a new file (prompts for filename, `.excalidraw` extension is added automatically)
+- **Save**: Manual save (or use Ctrl+S)
+- **Recents**: View and open recent files
+- **AutoSave**: Toggle auto-save on/off
 
-To build a redistributable, production mode package, use `wails build`.
+### Keyboard Shortcuts
+
+- `Ctrl+S`: Save current file
+
+### Auto-Save Behavior
+
+- When enabled, changes are automatically saved 800ms after you stop editing
+- Tab closing also triggers an auto-save
+- Last save time and method (auto/manual) are displayed in the toolbar
+
+## Development
+
+### Prerequisites
+
+- Go
+- Node.js
+- Wails CLI
+
+### Commands
+
+```bash
+# Install dependencies
+wails dev
+
+# Build for production
+wails build
+```
+
+## Tech Stack
+
+- **Frontend**: React + TypeScript + Excalidraw
+- **Backend**: Go (Wails)
+- **Build**: Wails + Vite
