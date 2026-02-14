@@ -77,7 +77,7 @@ function ExcalidrawTab({
   tab: Tab;
   isActive: boolean;
   onAPIReady: (id: string, api: any) => void;
-  onContentChange: (tabId: string) => void;
+  onContentChange: (tabId: string, filePath: string) => void;
 }) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const loadedRef = useRef(false);
@@ -105,11 +105,11 @@ function ExcalidrawTab({
     if (!excalidrawAPI) return;
 
     const handleChange = () => {
-      onContentChange(tab.id);
+      onContentChange(tab.id, tab.filePath);
     };
 
     excalidrawAPI.onChange = handleChange;
-  }, [excalidrawAPI, tab.id, onContentChange]);
+  }, [excalidrawAPI, tab.id, tab.filePath, onContentChange]);
 
   if (!isActive) return null;
 
@@ -141,17 +141,11 @@ export function ExcalidrawMain() {
   const tabsRef = useRef<Tab[]>([]);
   tabsRef.current = tabs;
 
-  const autoSaveTimers = useRef<{
-    [key: string]: ReturnType<typeof setTimeout>;
-  }>({});
-
-  const activeTab = tabs.find((t) => t.id === activeTabId);
-  const currentFilePath = activeTab?.filePath || "";
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const doSave = useCallback(async (tabId: string, isManual: boolean = false) => {
     const tab = tabsRef.current.find((t) => t.id === tabId);
     if (!tab?.excalidrawAPI || !tab.filePath) {
-      console.error("No API or file path for save");
       return;
     }
 
@@ -182,14 +176,14 @@ export function ExcalidrawMain() {
   }, []);
 
   const handleContentChange = useCallback(
-    (tabId: string) => {
+    (tabId: string, filePath: string) => {
       if (!autoSave) return;
 
-      if (autoSaveTimers.current[tabId]) {
-        clearTimeout(autoSaveTimers.current[tabId]);
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
       }
 
-      autoSaveTimers.current[tabId] = setTimeout(() => {
+      saveTimerRef.current = setTimeout(() => {
         doSave(tabId, false);
       }, 2000);
     },
@@ -198,7 +192,9 @@ export function ExcalidrawMain() {
 
   useEffect(() => {
     return () => {
-      Object.values(autoSaveTimers.current).forEach(clearTimeout);
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
     };
   }, []);
 
@@ -283,9 +279,9 @@ export function ExcalidrawMain() {
   }, [activeTabId, doSave]);
 
   const handleCloseTab = async (id: string) => {
-    if (autoSaveTimers.current[id]) {
-      clearTimeout(autoSaveTimers.current[id]);
-      delete autoSaveTimers.current[id];
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
     }
 
     const tab = tabs.find((t) => t.id === id);
