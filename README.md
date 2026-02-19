@@ -15,6 +15,7 @@ A desktop application for editing Excalidraw diagrams offline, built with Wails 
 - **Auto-Save**: Automatically saves changes (enabled by default, 800ms debounce)
 - **Manual Save**: Save with Ctrl+S keyboard shortcut
 - **Recent Files**: Quick access to recently opened files, stored in localStorage
+- **Backup**: Automatically creates backups when opening files, keeps last 10 versions
 
 ## Usage
 
@@ -59,3 +60,20 @@ wails build
 - **Frontend**: React + TypeScript + Excalidraw
 - **Backend**: Go (Wails)
 - **Build**: Wails + Vite
+
+## Backup Feature
+
+When you open an Excalidraw file, the application automatically creates a backup in a zip file located in the same directory as the original file.
+
+### Backup File Details
+
+- **Location**: Same directory as the original file
+- **Filename**: `${original_filename}.bak.zip`
+- **Backup Entry Format**: `original_filename.YYYY-MM-DD_HH-MM-SS.excalidraw.bak`
+
+### Backup Management
+
+- Each time a file is opened, a new backup entry is added to the zip file
+- The zip file keeps only the last 10 backup entries
+- Older backups are automatically removed when the limit is exceeded
+- Backup failures are logged as warnings and do not prevent file opening
